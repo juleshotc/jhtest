@@ -1,0 +1,96 @@
+# JULESHOTC TEST MACROS README -*- mode: org; buffer-read-only: t -*-
+#+TITLE: JHTEST
+#+AUTHOR: juleshotc <julesdelacruz49@gmail.com>
+#+OPTIONS: toc:t num:nil
+
+* Requirements
+
+This utility was tested using GCC, and using the =-std=gnu23= flag.
+Listed below are all the requirements necessary to build a project
+that makes use of JHTEST.
+
+- C23 Standard :: Use a C compiler that is compliant with the C23
+  standard.
+
+- GNU Extensions :: Use a C compiler that implements GNU extensions,
+  specifically the =__attribute__((constructor))= extension.
+
+- =JHTEST_IMPLEMENTATION= :: Call =#define JHTEST_IMPLEMENTATION= in
+  one source file.
+
+* Summary
+
+This is a single header library that provides testing and assertion
+macros.  You are provided four macros to use.
+
+- =JHTEST= :: A macro to decorate functions with which you want
+  running before =main()= for testing.
+
+- =jhtest()= :: A function macro that expands to an =<assert.h>=
+  assert outside of a =JHTEST= function and like a unit testing call
+  inside of a =JHTEST= function.
+
+- =JHTEST_IMPLEMENTATION= :: An stb-style macro that must be defined
+  in one file.
+
+- =NDEBUG= :: A conventional macro (borrowed from =<assert.h>=) that,
+  when defined, disables any and all tests and asserts.  Define this
+  during a release build.
+
+* Internals
+
+JHTEST makes use of constructors (a GNU extension), which run before
+=main()= is called.  Priority levels 500, 501, and 502 are reserved
+for JHTEST internal use.
+
+| Priority | Behavior                                                                                                               |
+|----------+------------------------------------------------------------------------------------------------------------------------|
+|      500 | Initialize behavior, then toggle a flag such that all calls to =jhtest()= are dispatched to the unit testing handler. |
+|      501 | Run all =JHTEST= functions.                                                                                            |
+|      502 | Provide a report, then un-toggle a flag such that all calls to =jhtest()= are dispatched to the assertion handler.    |
+
+* Example Usage
+
+#+BEGIN_SRC c
+int foo(int a, int b)
+{
+  jhtest(a > 0);
+  jhtest(b < 0);
+  /* ... */
+}
+#+END_SRC
+
+If the above jhtest calls fail, the program will log that and abort.
+
+#+BEGIN_SRC c
+JHTEST static void
+test_foo(void)
+{
+  jhtest(foo( 11,  21) ==  31);
+  jhtest(foo(-12,  22) == -32);
+  jhtest(foo( 13, -23) == -33);
+  jhtest(foo(-14, -24) == -34);
+}
+#+END_SRC
+
+If any of the above jhtest calls fail, the program will not terminate.
+It will simply log the error and continue, at least until it hits the
+priority 502 constructor.  Only then will the program terminate.
+
+* Recommendations
+
+- =JHTEST= static :: Decorate all =JHTEST= functions static.  static
+  was not added to the definition of =JHTEST= for clarity.  It is
+  clearer to the programmer who has no idea what =JHTEST= is what is
+  going on when the function is explicitly decorated static.
+
+- Function naming :: On logging, JHTEST divides tests by function name
+  for clarity.  Ideally name all your =JHTEST= functions something
+  different to fully take advantage.  Otherwise, if two =JHTEST=
+  functions are called sequentially and they both have names, they
+  will have no header to act as a division between them.
+
+* Author
+
+JHTEST was written entirely by juleshotc <julesdelacruz49@gmail.com>.
+The name JHTEST is from `JH Test'.  JH is the initials of juleshotc.
